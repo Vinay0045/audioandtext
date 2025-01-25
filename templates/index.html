@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Recorder and Text-to-Audio</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        table {
+            width: 100%;
+            border-spacing: 20px;
+        }
+        h2 {
+            margin-bottom: 10px;
+        }
+        textarea {
+            width: 90%;
+            height: 150px;
+        }
+        button {
+            margin-top: 10px;
+            padding: 10px 15px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:disabled {
+            background-color: #aaa;
+            cursor: not-allowed;
+        }
+        audio {
+            margin-top: 10px;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            margin-bottom: 15px;
+        }
+        hr {
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <table>
+        <tr>
+            <td style="width: 50%; vertical-align: top;">
+                <h2>Record and Upload Audio</h2>
+                <button id="record">Record</button>
+                <button id="stop" disabled>Stop</button>
+                <span id="timer">00:00</span>
+                <br>
+                <audio id="audio" controls style="display: none;"></audio>
+                <form id="uploadForm" method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="audio_data" id="audioData">
+                    <button type="submit" id="uploadButton" disabled>Upload</button>
+                </form>
+                <hr>
+                <h2>Recorded Files</h2>
+                <ul>
+                    {% for file in files %}
+                    <li>
+                        <audio controls>
+                            <source src="{{ url_for('uploaded_file', filename=file) }}">
+                            Your browser does not support the audio element.
+                        </audio><br>
+                        {{ file }}
+                        <a href="uploads/{{ file }}.txt" download>{{ file }}.txt</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </td>
+            <td style="width: 50%; vertical-align: top;">
+                <h2>Type in Your Text to Generate Audio</h2>
+                <form action="/upload_text" method="POST">
+                    <textarea name="text" placeholder="Enter your text here..."></textarea>
+                    <br>
+                    <button type="submit">Generate Audio</button>
+                </form>
+            </td>
+        </tr>
+    </table>
+    <script>
+        const recordButton = document.getElementById("record");
+        const stopButton = document.getElementById("stop");
+        const audioElement = document.getElementById("audio");
+        const uploadButton = document.getElementById("uploadButton");
+        const timerElement = document.getElementById("timer");
+
+        let mediaRecorder;
+        let audioChunks = [];
+        let timerInterval;
+        let seconds = 0;
+
+        const startTimer = () => {
+            timerInterval = setInterval(() => {
+                seconds++;
+                const minutes = String(Math.floor(seconds / 60)).padStart(2, "0");
+                const secs = String(seconds % 60).padStart(2, "0");
+                timerElement.textContent = `${minutes}:${secs}`;
+            }, 1000);
+        };
+
+        const stopTimer = () => {
+            clearInterval(timerInterval);
+            seconds = 0;
+            timerElement.textContent = "00:00";
+        };
+
+        recordButton.addEventListener("click", async () => {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+
+            mediaRecorder.ondataavailable = event => {
+                audioChunks.push(event.data);
+            };
+
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                audioElement.src = audioUrl;
+                audioElement.style.display = "block";
+                uploadButton.disabled = false;
+                document.getElementById("audioData").value = audioBlob;
+            };
+
+            audioChunks = [];
+            mediaRecorder.start();
+            recordButton.disabled = true;
+            stopButton.disabled = false;
+            startTimer();
+        });
+
+        stopButton.addEventListener("click", () => {
+            mediaRecorder.stop();
+            stopTimer();
+            recordButton.disabled = false;
+            stopButton.disabled = true;
+        });
+    </script>
+</body>
+</html>

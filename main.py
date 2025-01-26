@@ -32,60 +32,62 @@ def get_files():
 def index():
     files = get_files()
     return render_template('index.html', files=files)
-
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/upload', methods=['POST'])
 def upload_audio():
-    if request.method == 'POST':
-        # Check if audio_data is present in the request
-        if 'audio_data' not in request.files:
-            return "No audio data provided", 400  # Return error response
+    if 'audio_data' not in request.files:
+        return redirect(request.url)
 
-        file = request.files['audio_data']
-        if file.filename == '':
-            return "No file selected", 400  # Return error response
+    file = request.files['audio_data']
+    if file.filename == '':
+        return redirect(request.url)
 
-        if file:
-            # Save the file with a timestamp-based name
-            filename = datetime.now().strftime("%Y%m%d-%I%M%S%p") + '.wav'
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(file_path)
+    def transcribe_audio(file_path):
+        client = speech.SpeechClient()
+        """Transcribes an audio file using Google Speech-to-Text API"""
+        with open(file_path, 'rb') as audio_file:
+            content = audio_file.read()
 
-            # Use Google Cloud Speech-to-Text API
-            client = speech.SpeechClient()
-            with open(file_path, 'rb') as audio_file:
-                audio_content = audio_file.read()
-
-            audio = speech.RecognitionAudio(content=audio_content)
-            config=speech.RecognitionConfig(
-            # encoding=speech.RecognitionConfig.AudioEncoding.MP3,
-            # sample_rate_hertz=24000,
+        audio = speech.RecognitionAudio(content=content)
+        config = speech.RecognitionConfig(
             language_code="en-US",
             model="latest_long",
-            audio_channel_count=1,
             enable_word_confidence=True,
             enable_word_time_offsets=True,
-            )
+        )
 
-            response = client.recognize(config=config, audio=audio)
+        # Perform the transcription
+        response = client.recognize(config=config, audio=audio)
 
-            if response.results:
-                transcript = response.results[0].alternatives[0].transcript
-                transcript_path = os.path.splitext(file_path)[0] + '.txt'
-                with open(transcript_path, 'w') as f:
-                    f.write(transcript)
+        transcript = ''
+        for result in response.results:
+            transcript += result.alternatives[0].transcript + '\n'
 
-            return "Audio uploaded and processed successfully", 200  # Success response
+        return transcript
 
-    # For GET request, render the index page
-    files = get_files()
-    return render_template('index.html', files=files)
+    if file and allowed_file(file.filename):
+        filename = datetime.now().strftime("%Y%m%d-%I%M%S%p") + '.wav'
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(file_path)
+
+        # Transcribe the audio file
+        transcript = transcribe_audio(file_path)
+
+        # Save the transcript as a .txt file
+        transcript_filename = filename.replace('.wav', '.txt')
+        transcript_path = os.path.join(app.config['UPLOAD_FOLDER'], transcript_filename)
+        with open(transcript_path, 'w') as transcript_file:
+            transcript_file.write(transcript)
+
+        return render_template('index.html', transcript=transcript, audio_file_url=url_for('uploaded_file', filename=filename))
+
+    return redirect('/')
 
 
 @app.route('/upload/<filename>')
 def get_file(filename):
     return send_file(filename)
 
-tts_folder = 'path/to/your/tts_folder'
+tts_folder = 'path_tts_folder'
 if not os.path.exists(tts_folder):
     os.makedirs(tts_folder)
 app.config['TTS_FOLDER'] = tts_folder
@@ -95,17 +97,9 @@ def upload_text():
     text = request.form['text']
     print(text)
     client = texttospeech.TextToSpeechClient()
-    print("Credentials are working correctly!")
-    #
-    #
-    # Modify this block to call the stext to speech API
-    # Save the output as a audio file in the 'tts' directory 
-    # Display the audio files at the bottom and allow the user to listen to them
-    #
+
     if text:
         # Call Google Cloud Text-to-Speech API
-        client = texttospeech.TextToSpeechClient()
-
         synthesis_input = texttospeech.SynthesisInput(text=text)
         voice = texttospeech.VoiceSelectionParams(
             language_code="en-US",
@@ -127,7 +121,12 @@ def upload_text():
         with open(output_path, 'wb') as out:
             out.write(response.audio_content)
 
-    return redirect('/') #success
+        # Pass the generated audio file's filename to the template
+        audio_file_url = url_for('uploaded_file', filename=output_filename)
+
+        return render_template('index.html', audio_file_url=audio_file_url)  # Render the template with the audio file URL
+    return redirect('/')  # In case text is empty
+
 
 @app.route('/script.js',methods=['GET'])
 def scripts_js():
@@ -135,8 +134,7 @@ def scripts_js():
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-
+    return send_from_directory(app.config['TTS_FOLDER'], filename)
 
 
 

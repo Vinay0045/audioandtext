@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audio Recorder and Text-to-Audio</title>
+    <title>Audio Recorder and Upload</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -67,16 +67,7 @@
                 <hr>
                 <h2>Recorded Files</h2>
                 <ul>
-                    {% for file in files %}
-                    <li>
-                        <audio controls>
-                            <source src="{{ url_for('uploaded_file', filename=file) }}">
-                            Your browser does not support the audio element.
-                        </audio><br>
-                        {{ file }}
-                        <a href="uploads/{{ file }}.txt" download>{{ file }}.txt</a>
-                    </li>
-                    {% endfor %}
+                    <!-- Dynamically populated files can go here -->
                 </ul>
             </td>
             <td style="width: 50%; vertical-align: top;">
@@ -86,6 +77,14 @@
                     <br>
                     <button type="submit">Generate Audio</button>
                 </form>
+                <hr>
+                {% if audio_file_url %}
+                    <h2>Generated Audio</h2>
+                    <audio controls>
+                        <source src="{{ audio_file_url }}" type="audio/mp3">
+                        Your browser does not support the audio element.
+                    </audio>
+                {% endif %}
             </td>
         </tr>
     </table>
@@ -116,30 +115,42 @@
             timerElement.textContent = "00:00";
         };
 
+        // Record button click
         recordButton.addEventListener("click", async () => {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(stream);
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-            mediaRecorder.ondataavailable = event => {
-                audioChunks.push(event.data);
-            };
+                // Check for a compatible MIME type
+                const mimeType = 'audio/webm'; // 'audio/ogg' can also be used
+                mediaRecorder = new MediaRecorder(stream, { mimeType });
 
-            mediaRecorder.onstop = () => {
-                const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
-                const audioUrl = URL.createObjectURL(audioBlob);
-                audioElement.src = audioUrl;
-                audioElement.style.display = "block";
-                uploadButton.disabled = false;
-                document.getElementById("audioData").value = audioBlob;
-            };
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
 
-            audioChunks = [];
-            mediaRecorder.start();
-            recordButton.disabled = true;
-            stopButton.disabled = false;
-            startTimer();
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: mimeType });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    audioElement.src = audioUrl;
+                    audioElement.style.display = "block";
+
+                    // Enable the upload button after recording
+                    uploadButton.disabled = false;
+                    document.getElementById("audioData").value = audioBlob;
+                };
+
+                audioChunks = []; // Clear previous data
+                mediaRecorder.start();
+                recordButton.disabled = true;
+                stopButton.disabled = false;
+                startTimer();
+            } catch (error) {
+                console.error("Error accessing microphone:", error);
+                alert("Permission to access microphone denied or error occurred.");
+            }
         });
 
+        // Stop button click
         stopButton.addEventListener("click", () => {
             mediaRecorder.stop();
             stopTimer();

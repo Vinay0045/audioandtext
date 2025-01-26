@@ -7,72 +7,85 @@ const timerDisplay = document.getElementById('timer');
 
 let mediaRecorder;
 let audioChunks = [];
-let startTime;
+let timerInterval;
 
-function formatTime(time) {
-  const minutes = Math.floor(time / 60);
-  const seconds = Math.floor(time % 60);
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+function formatTime(seconds) {
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+}
+
+function startTimer() {
+    let elapsedSeconds = 0;
+    timerInterval = setInterval(() => {
+        elapsedSeconds++;
+        timerDisplay.textContent = formatTime(elapsedSeconds);
+    }, 1000);
+}
+
+function stopTimer() {
+    clearInterval(timerInterval);
+    timerDisplay.textContent = '00:00';
 }
 
 recordButton.addEventListener('click', () => {
-  navigator.mediaDevices.getUserMedia({ audio: true })
-    .then(stream => {
-      mediaRecorder = new MediaRecorder(stream);
-      mediaRecorder.start();
+    navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+            // Check for a compatible mimeType and set it for mediaRecorder
+            const mimeType = 'audio/webm'; // Or 'audio/ogg'
+            const options = { mimeType: mimeType };
 
-      startTime = Date.now();
-      let timerInterval = setInterval(() => {
-        const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
-        timerDisplay.textContent = formatTime(elapsedTime);
-      }, 1000);
-
-      mediaRecorder.ondataavailable = e => {
-        audioChunks.push(e.data);
-      };
-
-      mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-        const formData = new FormData();
-        formData.append('audio_data', audioBlob, 'recorded_audio.wav');
-
-        fetch('/upload', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
+            try {
+                mediaRecorder = new MediaRecorder(stream, options);
+            } catch (err) {
+                console.error('Error accessing MediaRecorder:', err);
+                return;
             }
-            location.reload(); // Force refresh
 
-            return response.text();
-        })
-        .then(data => {
-            console.log('Audio uploaded successfully:', data);
-            // Redirect to playback page or display success message
+            mediaRecorder.start();
+            audioChunks = [];
+            startTimer();
+
+            mediaRecorder.ondataavailable = e => {
+                audioChunks.push(e.data);
+            };
+
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunks, { type: mimeType });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                audioElement.src = audioUrl;
+                audioElement.style.display = 'block';
+                audioDataInput.value = audioBlob;
+
+                // Handle file upload
+                const formData = new FormData();
+                formData.append('audio_data', audioBlob, 'recorded_audio.webm'); // or .ogg
+
+                fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                })
+                    .then(response => response.text())
+                    .then(data => {
+                        console.log('Upload success:', data);
+                        location.reload();
+                    })
+                    .catch(error => console.error('Upload failed:', error));
+            };
         })
         .catch(error => {
-            console.error('Error uploading audio:', error);
+            console.error('Microphone access denied:', error);
         });
-      };
-    })
-    .catch(error => {
-      console.error('Error accessing microphone:', error);
-    });
 
-  recordButton.disabled = true;
-  stopButton.disabled = false;
+    recordButton.disabled = true;
+    stopButton.disabled = false;
 });
 
 stopButton.addEventListener('click', () => {
-  if (mediaRecorder) {
     mediaRecorder.stop();
-  }
+    stopTimer();
+    recordButton.disabled = false;
+    stopButton.disabled = true);
 
-  recordButton.disabled = false;
-  stopButton.disabled = true;
-});
-
-// Initially disable the stop button
+// Initially disable stop button
 stopButton.disabled = true;

@@ -78,6 +78,7 @@ recordButton.addEventListener('click', () => {
             console.error('Microphone access denied:', error);
         });
 
+        
     recordButton.disabled = true;
     stopButton.disabled = false;
 });

@@ -127,7 +127,6 @@ def upload_text():
         return render_template('index.html', audio_file_url=audio_file_url)  # Render the template with the audio file URL
     return redirect('/')  # In case text is empty
 
-
 @app.route('/script.js',methods=['GET'])
 def scripts_js():
     return send_file('./script.js')

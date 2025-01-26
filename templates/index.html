@@ -175,10 +175,12 @@ recordButton.addEventListener("click", async () => {
                 stopButton.disabled = false;
                 startTimer();
             } catch (error) {
+                
                 console.error("Error accessing microphone:", error);
                 alert("Permission to access microphone denied or error occurred.");
             }
         });
+
 
         // Stop button click
         stopButton.addEventListener("click", () => {

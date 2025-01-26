@@ -1,5 +1,4 @@
 
-
 from datetime import datetime
 
 from flask import Flask, render_template, request, redirect, url_for, send_file, send_from_directory
@@ -7,7 +6,6 @@ from werkzeug.utils import secure_filename
 from google.cloud import speech, texttospeech
 import os
 from flask import flash
-
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'vinayak_is_secret_key'
@@ -35,8 +33,6 @@ def get_files():
 def index():
     files = get_files()
     return render_template('index.html', files=files)
-
-
 @app.route('/upload', methods=['POST'])
 def upload_audio():
     if 'audio_data' not in request.files:
@@ -45,6 +41,28 @@ def upload_audio():
     file = request.files['audio_data']
     if file.filename == '':
         return redirect(request.url)
+
+    def transcribe_audio(file_path):
+        client = speech.SpeechClient()
+        with open(file_path, 'rb') as audio_file:
+            content = audio_file.read()
+
+        audio = speech.RecognitionAudio(content=content)
+        config = speech.RecognitionConfig(
+            language_code="en-US",
+            model="latest_long",
+            enable_word_confidence=True,
+            enable_word_time_offsets=True,
+        )
+
+        # Perform the transcription
+        response = client.recognize(config=config, audio=audio)
+
+        transcript = ''
+        for result in response.results:
+            transcript += result.alternatives[0].transcript + '\n'
+
+        return transcript
 
     if file and allowed_file(file.filename):
         filename = datetime.now().strftime("%Y%m%d-%I%M%S%p") + '.wav'
@@ -60,35 +78,10 @@ def upload_audio():
         with open(transcript_path, 'w') as transcript_file:
             transcript_file.write(transcript)
 
-        return render_template(
-            'index.html',
-            transcript=transcript,
-            audio_file_url=url_for('uploaded_file', filename=filename),
-            txt_file_url=url_for('uploaded_file', filename=transcript_filename),
-        )
+        return render_template('index.html', transcript=transcript, audio_file_url=url_for('uploaded_file', filename=filename))
+
     return redirect('/')
 
-def transcribe_audio(file_path):
-    client = speech.SpeechClient()
-    with open(file_path, 'rb') as audio_file:
-        content = audio_file.read()
-
-    audio = speech.RecognitionAudio(content=content)
-    config = speech.RecognitionConfig(
-        language_code="en-US",
-        model="latest_long",
-        enable_word_confidence=True,
-        enable_word_time_offsets=True,
-    )
-
-    # Perform the transcription
-    response = client.recognize(config=config, audio=audio)
-
-    transcript = ''
-    for result in response.results:
-        transcript += result.alternatives[0].transcript + '\n'
-
-    return transcript
 
 @app.route('/upload/<filename>')
 def get_file(filename):
@@ -141,9 +134,11 @@ def scripts_js():
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    return send_from_directory(app.config['TTS_FOLDER'], filename)
 
 
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+

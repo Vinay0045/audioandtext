@@ -1,3 +1,4 @@
+
 const recordButton = document.getElementById('record');
 const stopButton = document.getElementById('stop');
 const audioElement = document.getElementById('audio');
@@ -89,9 +90,3 @@ stopButton.addEventListener('click', () => {
 
 // Initially disable stop button
 stopButton.disabled = true;
-
-
-
-
-
-

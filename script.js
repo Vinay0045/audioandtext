@@ -28,17 +28,17 @@ function stopTimer() {
     timerDisplay.textContent = '00:00';
 }
 
-// Event listener for record button
 recordButton.addEventListener('click', () => {
     navigator.mediaDevices.getUserMedia({ audio: true })
         .then(stream => {
+            // Check for a compatible mimeType and set it for mediaRecorder
             const mimeType = 'audio/webm'; // Or 'audio/ogg'
             const options = { mimeType: mimeType };
 
             try {
                 mediaRecorder = new MediaRecorder(stream, options);
             } catch (err) {
-                console.error('Error initializing MediaRecorder:', err);
+                console.error('Error accessing MediaRecorder:', err);
                 return;
             }
 
@@ -57,7 +57,7 @@ recordButton.addEventListener('click', () => {
                 audioElement.style.display = 'block';
                 audioDataInput.value = audioBlob;
 
-                // File upload
+                // Handle file upload
                 const formData = new FormData();
                 formData.append('audio_data', audioBlob, 'recorded_audio.webm'); // or .ogg
 
@@ -74,22 +74,24 @@ recordButton.addEventListener('click', () => {
             };
         })
         .catch(error => {
-            console.error('Error accessing microphone:', error);
+            console.error('Microphone access denied:', error);
         });
 
     recordButton.disabled = true;
     stopButton.disabled = false;
 });
-
-// Event listener for stop button
 stopButton.addEventListener('click', () => {
-    if (mediaRecorder) {
-        mediaRecorder.stop();
-        stopTimer();
-        recordButton.disabled = false;
-        stopButton.disabled = true;
-    }
+    mediaRecorder.stop();
+    stopTimer();
+    recordButton.disabled = false;
+    stopButton.disabled = true;
 });
 
 // Initially disable stop button
 stopButton.disabled = true;
+
+
+
+
+
+

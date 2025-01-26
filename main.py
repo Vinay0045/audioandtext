@@ -32,10 +32,7 @@ def get_files():
 def index():
     files = get_files()
     return render_template('index.html', files=files)
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    files = [f for f in os.listdir(UPLOAD_FOLDER) if f.endswith('.txt')]
-    return render_template('index.html', files=files)
+
 
 @app.route('/upload', methods=['POST'])
 def upload_audio():

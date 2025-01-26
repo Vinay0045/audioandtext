@@ -8,6 +8,7 @@ from google.cloud import speech, texttospeech
 import os
 from flask import flash
 
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'vinayak_is_secret_key'
  

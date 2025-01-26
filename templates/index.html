@@ -71,8 +71,12 @@
                 </form>
                 <hr>
                 <h2>Recorded Files</h2>
-                <ul>
-                    <!-- Dynamically populated files can go here -->
+                <<ul>
+                    {% for file in files %}
+                        <li>
+                            <a href="{{ url_for('uploaded_file', filename=file) }}">{{ file }}</a>
+                        </li>
+                    {% endfor %}
                 </ul>
             </td>
             <td style="width: 50%; vertical-align: top;">

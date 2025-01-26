@@ -48,6 +48,11 @@
         hr {
             margin: 20px 0;
         }
+        .transcript {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #333;
+        }
     </style>
 </head>
 <body>
@@ -84,6 +89,12 @@
                         <source src="{{ audio_file_url }}" type="audio/mp3">
                         Your browser does not support the audio element.
                     </audio>
+                {% endif %}
+                {% if transcript %}
+                    <div class="transcript">
+                        <h3>Converted Text:</h3>
+                        <pre>{{ transcript }}</pre>
+                    </div>
                 {% endif %}
             </td>
         </tr>

@@ -43,7 +43,6 @@ def upload_audio():
 
     def transcribe_audio(file_path):
         client = speech.SpeechClient()
-        """Transcribes an audio file using Google Speech-to-Text API"""
         with open(file_path, 'rb') as audio_file:
             content = audio_file.read()
 
@@ -81,6 +80,7 @@ def upload_audio():
         return render_template('index.html', transcript=transcript, audio_file_url=url_for('uploaded_file', filename=filename))
 
     return redirect('/')
+
 
 
 @app.route('/upload/<filename>')

@@ -71,14 +71,14 @@
                 </form>
                 <hr>
                 <h2>Recorded Files</h2>
-                <<ul>
+                <ul>
                     {% for file in files %}
                         <li>
                             <a href="{{ url_for('uploaded_file', filename=file) }}">{{ file }}</a>
                         </li>
                     {% endfor %}
                 </ul>
-            </td>
+
             <td style="width: 50%; vertical-align: top;">
                 <h2>Type in Your Text to Generate Audio</h2>
                 <form action="/upload_text" method="POST">

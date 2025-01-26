@@ -82,7 +82,6 @@ def upload_audio():
     return redirect('/')
 
 
-
 @app.route('/upload/<filename>')
 def get_file(filename):
     return send_file(filename)

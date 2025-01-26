@@ -37,10 +37,12 @@ def index():
 @app.route('/upload', methods=['POST'])
 def upload_audio():
     if 'audio_data' not in request.files:
+        flash("No file part in the request")
         return redirect(request.url)
 
     file = request.files['audio_data']
     if file.filename == '':
+        flash("No selected file")
         return redirect(request.url)
 
     if file and allowed_file(file.filename):
@@ -57,12 +59,16 @@ def upload_audio():
         with open(transcript_path, 'w') as transcript_file:
             transcript_file.write(transcript)
 
+        # Pass both audio and transcript URLs to the template
         return render_template(
             'index.html',
+            files=get_files(),
             transcript=transcript,
             audio_file_url=url_for('uploaded_file', filename=filename),
-            txt_file_url=url_for('uploaded_file', filename=transcript_filename),
+            txt_file_url=url_for('uploaded_file', filename=transcript_filename)
         )
+
+    flash("Invalid file type")
     return redirect('/')
 
 def transcribe_audio(file_path):

@@ -65,15 +65,33 @@
                 <span id="timer">00:00</span>
                 <br>
                 <audio id="audio" controls style="display: none;"></audio>
-                <form id="uploadForm" method="POST" enctype="multipart/form-data">
+                <form action="/upload_audio" id="uploadForm" method="POST" enctype="multipart/form-data">
                     <input type="hidden" name="audio_data" id="audioData">
                     <button type="submit" id="uploadButton" disabled>Upload</button>
                 </form>
                 <hr>
                 <h2>Recorded Files</h2>
-                <ul>
-                    <!-- Dynamically populated files can go here -->
-                </ul>
+                <table>
+                    
+                        {% for audio_file in files %}
+
+                        <tr>
+                            <td>
+                                <audio controls>
+                                    <source src="{{ url_for('uploaded_file_att', filename=audio_file) }}" type="audio/wav">
+                                    Your browser does not support the audio element.
+                                </audio>
+                            </td>
+                            <td>
+                                <div class="transcript">
+                                    <h3>Transcript:</h3>
+                                    <pre>{{ transcripts[audio_file] }}</pre>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    
+                </table>
             </td>
             <td style="width: 50%; vertical-align: top;">
                 <h2>Type in Your Text to Generate Audio</h2>

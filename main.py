@@ -11,7 +11,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'vinayak_is_secret_key'
  
 UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'wav'}
+ALLOWED_EXTENSIONS = {'wav','txt'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -21,18 +21,21 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def get_files():
-    files = []
-    for filename in os.listdir(UPLOAD_FOLDER):
-        if allowed_file(filename):
-            files.append(filename)
-            print(filename)
-    files.sort(reverse=True)
-    return files
+    audio_files = [f for f in os.listdir(app.config['UPLOAD_FOLDER']) if f.endswith('.wav')]
+    transcripts = {}
+    for audio_file in audio_files:
+        text_file = audio_file.replace('.wav', '.txt')
+        text_path = os.path.join(app.config['UPLOAD_FOLDER'], text_file)
+        if os.path.exists(text_path):
+            with open(text_path, 'r') as f:
+                transcripts[audio_file] = f.read()
+    return audio_files,transcripts
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    files = get_files()
-    return render_template('index.html', files=files)
+    files, transcripts = get_files()
+    return render_template('index.html', files=files,transcripts=transcripts)
+
 @app.route('/upload', methods=['POST'])
 def upload_audio():
     if 'audio_data' not in request.files:
@@ -44,6 +47,7 @@ def upload_audio():
 
     def transcribe_audio(file_path):
         client = speech.SpeechClient()
+
         with open(file_path, 'rb') as audio_file:
             content = audio_file.read()
 
@@ -86,6 +90,10 @@ def upload_audio():
 @app.route('/upload/<filename>')
 def get_file(filename):
     return send_file(filename)
+
+@app.route('/upload_audio', methods=['POST'])
+def get_text():
+    return redirect('/')
 
 tts_folder = 'path_tts_folder'
 if not os.path.exists(tts_folder):
@@ -134,6 +142,10 @@ def scripts_js():
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['TTS_FOLDER'], filename)
+
+@app.route('/uploads_ats/<filename>')
+def uploaded_file_att(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 
 

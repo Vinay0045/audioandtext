@@ -1,60 +1,212 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Audio Recorder</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Recorder and Upload</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        table {
+            width: 100%;
+            border-spacing: 20px;
+        }
+        h2 {
+            margin-bottom: 10px;
+        }
+        textarea {
+            width: 90%;
+            height: 150px;
+        }
+        button {
+            margin-top: 10px;
+            padding: 10px 15px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:disabled {
+            background-color: #aaa;
+            cursor: not-allowed;
+        }
+        audio {
+            margin-top: 10px;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            margin-bottom: 15px;
+        }
+        hr {
+            margin: 20px 0;
+        }
+        .transcript {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #333;
+        }
+    </style>
 </head>
 <body>
-    <table style="width:100%">
+    <table>
         <tr>
-            <td style="width:50%">
+            <td style="width: 50%; vertical-align: top;">
                 <h2>Record and Upload Audio</h2>
-
                 <button id="record">Record</button>
-                <button id="stop">Stop</button>
+                <button id="stop" disabled>Stop</button>
                 <span id="timer">00:00</span>
-                <audio id="audio"></audio>
-                <form id="uploadForm" method="POST" enctype="multipart/form-data">
+                <br>
+                <audio id="audio" controls style="display: none;"></audio>
+                <form action="/upload_audio" id="uploadForm" method="POST" enctype="multipart/form-data">
                     <input type="hidden" name="audio_data" id="audioData">
+                    <button type="submit" id="uploadButton" disabled>Upload</button>
                 </form>
-                <script src="script.js"></script>
                 <hr>
                 <h2>Recorded Files</h2>
-                <ul>
-                    {% for file in files %}
-                    <li> 
-                        <audio controls>
-                            <source src="{{ url_for('uploaded_file', filename=file) }}">
-                            Your browser does not support the audio element.
-                        </audio><br>
-                        {{ file }}
-                        <a href="uploads/{{ file }}.txt">{{ file }}.txt</a>
-                    </li>
-                    {% endfor %}
-                </ul>
+                <table>
+                    
+                        {% for audio_file in files %}
+
+                        <tr>
+                            <td>
+                                <audio controls>
+                                    <source src="{{ url_for('uploaded_file_att', filename=audio_file) }}" type="audio/wav">
+                                    Your browser does not support the audio element.
+                                </audio>
+                            </td>
+                            <td>
+                                <div class="transcript">
+                                    <h3>Transcript:</h3>
+                                    <pre>{{ transcripts[audio_file] }}</pre>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    
+                </table>
             </td>
-            <td style="width:50%">
-                <h2>Type in your text to generate audio</h2>
-                <form action="/upload_text" method="post">
-                    <textarea name="text" rows="10" cols="50"></textarea>
+            <td style="width: 50%; vertical-align: top;">
+                <h2>Type in Your Text to Generate Audio</h2>
+                <form action="/upload_text" method="POST">
+                    <textarea name="text" placeholder="Enter your text here..."></textarea>
                     <br>
-                    <input type="submit" value="Upload">
+                    <button type="submit">Generate Audio</button>
                 </form>
                 <hr>
-                <h2>Generated Audio Files</h2>
-                <ul>
-                    {% for tts_file in tts_files %}
-                    <li>
-                        <audio controls>
-                            <source src="{{ url_for('tts_file', filename=tts_file) }}" type="audio/mpeg">
-                            Your browser does not support the audio element.
-                        </audio><br>
-                        {{ tts_file }}
-                        <a href="tts/{{ tts_file }}.txt">{{ tts_file }}.txt</a>
-                    </li>
-                    {% endfor %}
-                </ul>
+                {% if audio_file_url %}
+                    <h2>Generated Audio</h2>
+                    <audio controls>
+                        <source src="{{ audio_file_url }}" type="audio/mp3">
+                        Your browser does not support the audio element.
+                    </audio>
+                {% endif %}
+                {% if transcript %}
+                    <div class="transcript">
+                        <h3>Converted Text:</h3>
+                        <pre>{{ transcript }}</pre>
+                    </div>
+                {% endif %}
             </td>
         </tr>
     </table>
+    <script>
+        const recordButton = document.getElementById("record");
+        const stopButton = document.getElementById("stop");
+        const audioElement = document.getElementById("audio");
+        const uploadButton = document.getElementById("uploadButton");
+        const audioFileInput = document.getElementById("audioFile");
+        const timerElement = document.getElementById("timer");
+
+        let mediaRecorder;
+        let audioChunks = [];
+        let timerInterval;
+        let seconds = 0;
+
+        const startTimer = () => {
+            timerInterval = setInterval(() => {
+                seconds++;
+                const minutes = String(Math.floor(seconds / 60)).padStart(2, "0");
+                const secs = String(seconds % 60).padStart(2, "0");
+                timerElement.textContent = `${minutes}:${secs}`; // Fixed the template literal
+            }, 1000);
+        };
+
+        const stopTimer = () => {
+            clearInterval(timerInterval);
+            seconds = 0;
+            timerElement.textContent = "00:00";
+        };
+
+        // Record button click
+recordButton.addEventListener("click", async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+                const mimeType = 'audio/webm';
+                mediaRecorder = new MediaRecorder(stream, { mimeType });
+
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: mimeType });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    audioElement.src = audioUrl;
+                    audioElement.style.display = "block";
+
+                    // Enable the upload button after recording
+                    uploadButton.disabled = false;
+
+                    // Create a file from the Blob and set it in the form input
+                    const audioFile = new File([audioBlob], 'recorded_audio.wav', { type: 'audio/wav' });
+                    const formData = new FormData();
+                    formData.append('audio_data', audioFile);
+
+                    // Prepare for the form submission
+                    uploadButton.addEventListener('click', () => {
+                        // Submit the form with the audio data
+                        fetch('/upload', {
+                            method: 'POST',
+                            body: formData,
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            console.log(data);
+                            alert('Audio uploaded successfully');
+                        })
+                        .catch(error => console.error('Error:', error));
+                    });
+                };
+
+                audioChunks = [];
+                mediaRecorder.start();
+                recordButton.disabled = true;
+                stopButton.disabled = false;
+                startTimer();
+            } catch (error) {
+                
+                console.error("Error accessing microphone:", error);
+                alert("Permission to access microphone denied or error occurred.");
+            }
+        });
+
+
+        // Stop button click
+        stopButton.addEventListener("click", () => {
+            mediaRecorder.stop();
+            stopTimer();
+            recordButton.disabled = false;
+            stopButton.disabled = true;
+        });
+    </script>
 </body>
 </html>

@@ -72,25 +72,30 @@
                 <hr>
                 <h2>Recorded Files</h2>
                 <table>
-                    
-                        {% for audio_file in files %}
-
-                        <tr>
-                            <td>
-                                <audio controls>
-                                    <source src="{{ url_for('uploaded_file_att', filename=audio_file) }}" type="audio/wav">
-                                    Your browser does not support the audio element.
-                                </audio>
-                            </td>
-                            <td>
-                                <div class="transcript">
-                                    <h3>Transcript:</h3>
-                                    <pre>{{ transcripts[audio_file] }}</pre>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    
+                    {% for audio_file in files %}
+                    <tr>
+                        <td>
+                            <audio controls>
+                                <source src="{{ url_for('uploaded_file_att', filename=audio_file) }}" type="audio/wav">
+                                Your browser does not support the audio element.
+                            </audio>
+                            <br>
+                            <a href="{{ url_for('uploaded_file_att', filename=audio_file) }}" download>
+                                🎵 Download Audio
+                            </a>
+                        </td>
+                        
+                        <td>
+                            <div class="transcript">
+                                <h3>Transcript:</h3>
+                                <pre>{{ transcripts[audio_file] }}</pre>
+                                <a href="{{ url_for('uploaded_audio', filename=audio_file.replace('.wav', '.txt')) }}" download>
+                                    📄 Download Transcript & Sentiment Analysis
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
                 </table>
             </td>
             <td style="width: 50%; vertical-align: top;">
@@ -101,13 +106,29 @@
                     <button type="submit">Generate Audio</button>
                 </form>
                 <hr>
-                {% if audio_file_url %}
-                    <h2>Generated Audio</h2>
-                    <audio controls>
-                        <source src="{{ audio_file_url }}" type="audio/mp3">
-                        Your browser does not support the audio element.
-                    </audio>
+                {% if tts_files %}
+                    <h2>Generated Audio Files</h2>
+                    <ul>
+                        {% for tts_file in tts_files %}
+                        <li>
+                            <audio controls>
+                                <source src="{{ url_for('serve_tts_file', filename=tts_file) }}" type="audio/mpeg">
+                                Your browser does not support the audio element.
+                            </audio>
+                            <br>
+                            <a href="{{ url_for('serve_tts_file', filename=tts_file) }}" download>
+                                🎵 Download Audio ({{ tts_file }})
+                            </a>
+                            <br>
+                            <a href="{{ url_for('serve_tts_file', filename=tts_file.replace('.mp3', '.txt')) }}" download>
+                                📄 Download Text ({{ tts_file.replace('.mp3', '.txt') }})
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
                 {% endif %}
+
+
                 {% if transcript %}
                     <div class="transcript">
                         <h3>Converted Text:</h3>
